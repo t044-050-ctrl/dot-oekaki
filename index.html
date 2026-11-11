@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ドットおえかき - 点つなぎ</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts (Fredoka & M PLUS Rounded 1c for cute typography) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'M PLUS Rounded 1c', 'Fredoka', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    /* Custom Scrollbar for top header single-row overflow */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Pulse animation for buttons */
+    @keyframes subtle-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+    .animate-bounce-subtle {
+      animation: subtle-bounce 2s infinite;
+    }
+  </style>
+</head>
+<body class="bg-white text-slate-800 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+  <!-- Header: Single Row Compact Toolbar (Enlarged for 1st graders) -->
+  <!-- Header: Single Row Compact Toolbar (Optimized for No-Scroll) -->
+  <header class="bg-white border-b border-slate-200 shadow-sm px-2 py-1.5 sticky top-0 z-30">
+    <div class="w-full flex items-center justify-start gap-2 sm:gap-3 no-scrollbar overflow-x-auto">
+      
+      <!-- Title -->
+      <div class="flex items-center gap-1 shrink-0">
+        <span class="text-xl">✏️</span>
+        <h1 class="text-base sm:text-lg font-black text-indigo-900 tracking-wide">ドットおえかき</h1>
+      </div>
+
+      <!-- Mode Switcher (Fixed Position) -->
+      <div class="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-xl shrink-0">
+        <button id="modeFreeBtn" class="px-2.5 py-1 rounded-lg font-bold text-xs sm:text-sm bg-indigo-600 text-white shadow-sm transition">
+          じゆう
+        </button>
+        <button id="modeGuideBtn" class="px-2.5 py-1 rounded-lg font-bold text-xs sm:text-sm text-indigo-600 hover:bg-slate-200 transition">
+          おてほん
+        </button>
+      </div>
+
+      <!-- Preset Selector (In Guide Mode) -->
+      <div id="presetBar" class="flex items-center gap-1 shrink-0 hidden">
+        <div class="flex items-center gap-1" id="presetButtons"></div>
+      </div>
+
+      <!-- Palette (8 Colors + Eraser Button) -->
+      <div class="flex items-center shrink-0">
+        <div id="colorPalette" class="flex items-center gap-1"></div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-1 shrink-0 ml-auto">
+        <button id="undoBtn" class="px-2 py-1 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs sm:text-sm border border-amber-300 transition flex items-center gap-1">
+          <i class="fa-solid fa-rotate-left"></i> もどる
+        </button>
+
+        <button id="clearBtn" class="px-2 py-1 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs sm:text-sm border border-rose-300 transition flex items-center gap-1">
+          <i class="fa-solid fa-trash-can"></i> ぜんぶけす
+        </button>
+
+        <button id="soundBtn" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold border border-slate-300 transition" title="おと">
+          <i class="fa-solid fa-volume-high text-xs sm:text-sm" id="soundIcon"></i>
+        </button>
+
+        <!-- Screenshot / Camera Button -->
+        <button id="screenshotBtn" class="px-2 py-1 rounded-xl bg-indigo-100 hover:bg-indigo-200 text-indigo-900 font-bold text-xs sm:text-sm border border-indigo-300 transition flex items-center gap-1 shadow-sm" title="しゃしんをとる">
+          <i class="fa-solid fa-camera text-xs sm:text-sm text-indigo-700"></i>
+          <span class="hidden sm:inline">しゃしん</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Workspace (16:9 Aspect Canvas Container) -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-2 flex flex-col items-center justify-center">
+
+    <!-- 16:9 Aspect Ratio Container (Pure White Background, No Frame Border) -->
+    <div class="w-full relative bg-white overflow-hidden">
+      <div class="w-full aspect-[16/9] relative bg-white overflow-hidden cursor-pointer" id="canvasContainer">
+        <!-- Canvas for Dots and Lines -->
+        <canvas id="dotCanvas" class="absolute inset-0 w-full h-full block bg-white"></canvas>
+        
+        <!-- Confetti Overlay -->
+        <canvas id="confettiCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-20"></canvas>
+
+        <!-- Message Toast -->
+        <div id="toast" class="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/80 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-2 z-10">
+          <span id="toastMsg">つぎの てんを タップしてね！</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Clear Confirmation Modal -->
+  <div id="clearModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl p-5 max-w-xs w-full shadow-xl text-center space-y-4 border border-slate-100">
+      <div class="w-12 h-12 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto text-xl">
+        <i class="fa-solid fa-trash-can"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-800">ぜんぶ けしますか？</h3>
+      <div class="flex gap-2">
+        <button id="cancelClearBtn" class="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">やめる</button>
+        <button id="confirmClearBtn" class="flex-1 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs transition">けす</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div id="successModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl p-6 max-w-xs w-full shadow-2xl text-center space-y-4 border border-emerald-100">
+      <div class="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce-subtle">
+        <i class="fa-solid fa-crown"></i>
+      </div>
+      <div>
+        <h3 class="text-xl font-black text-slate-800">できた！</h3>
+        <p class="text-xs text-slate-500 font-bold mt-1">じょうずに かけたね！</p>
+      </div>
+      <button id="closeSuccessBtn" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm shadow-md transition">つぎへ</button>
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // --- Application Constants & Config ---
+    const COLS = 25;
+    const ROWS = 14;
+    const COLORS = [
+      { name: 'くろ', hex: '#1e293b' },
+      { name: 'あか', hex: '#ef4444' },
+      { name: 'オレンジ', hex: '#f97316' },
+      { name: 'きいろ', hex: '#eab308' },
+      { name: 'みどり', hex: '#10b981' },
+      { name: 'あお', hex: '#3b82f6' },
+      { name: 'むらさき', hex: '#a855f7' },
+      { name: 'ちゃいろ', hex: '#78350f' }
+    ];
+
+    // Presets using 1-step adjacent connections
+    const PRESETS = [
+      {
+        id: 'house',
+        name: 'いえ',
+        leftEdges: [
+          // Higher Roof (Peak at [5,1]) & Overhanging eaves (left: [1,5], right: [9,5])
+          [[5,1],[4,2]],[[4,2],[3,3]],[[3,3],[2,4]],[[2,4],[1,5]],
+          [[5,1],[6,2]],[[6,2],[7,3]],[[7,3],[8,4]],[[8,4],[9,5]],
+          [[1,5],[2,5]],[[2,5],[3,5]],[[3,5],[4,5]],[[4,5],[5,5]],[[5,5],[6,5]],[[6,5],[7,5]],[[7,5],[8,5]],[[8,5],[9,5]],
+          // Walls (col 2..8, row 5..10)
+          [[2,5],[2,6]],[[2,6],[2,7]],[[2,7],[2,8]],[[2,8],[2,9]],[[2,9],[2,10]],
+          [[8,5],[8,6]],[[8,6],[8,7]],[[8,7],[8,8]],[[8,8],[8,9]],[[8,9],[8,10]],
+          [[2,10],[3,10]],[[3,10],[4,10]],[[4,10],[5,10]],[[5,10],[6,10]],[[6,10],[7,10]],[[7,10],[8,10]],
+          // Door
+          [[5,10],[5,9]],[[5,9],[5,8]],[[5,8],[6,8]],[[6,8],[6,9]],[[6,9],[6,10]],
+          // Window
+          [[3,7],[4,7]],[[4,7],[4,8]],[[4,8],[3,8]],[[3,8],[3,7]]
+        ]
+      },
+      {
+        id: 'boat',
+        name: 'ふね',
+        leftEdges: [
+          // Mast
+          [[6,2],[6,3]],[[6,3],[6,4]],[[6,4],[6,5]],[[6,5],[6,6]],[[6,6],[6,7]],
+          // Left Triangle Sail
+          [[6,2],[5,3]],[[5,3],[4,4]],[[4,4],[3,5]],[[3,5],[2,6]],
+          [[2,6],[3,6]],[[3,6],[4,6]],[[4,6],[5,6]],[[5,6],[6,6]],
+          // Right Triangle Sail
+          [[6,3],[7,4]],[[7,4],[8,5]],[[8,5],[9,6]],
+          [[9,6],[8,6]],[[8,6],[7,6]],[[7,6],[6,6]],
+          // Hull (Boat Body)
+          [[1,7],[2,7]],[[2,7],[3,7]],[[3,7],[4,7]],[[4,7],[5,7]],[[5,7],[6,7]],[[6,7],[7,7]],[[7,7],[8,7]],[[8,7],[9,7]],[[9,7],[10,7]],
+          [[1,7],[2,8]],[[2,8],[3,9]],[[3,9],[4,9]],[[4,9],[5,9]],[[5,9],[6,9]],[[6,9],[7,9]],[[7,9],[8,9]],[[8,9],[9,8]],[[9,8],[10,7]]
+        ]
+      },
+      {
+        id: 'fish',
+        name: 'さかな',
+        leftEdges: [
+          // Body Outline
+          [[2,6],[3,5]],[[3,5],[4,4]],[[4,4],[5,4]],[[5,4],[6,4]],[[6,4],[7,5]],[[7,5],[8,6]],
+          [[2,6],[3,7]],[[3,7],[4,8]],[[4,8],[5,8]],[[5,8],[6,8]],[[6,8],[7,7]],[[7,7],[8,6]],
+          // Tail
+          [[8,6],[9,4]],[[9,4],[10,4]],[[10,4],[9,6]],[[9,6],[10,8]],[[10,8],[9,8]],[[9,8],[8,6]]
+        ]
+      },
+      {
+        id: 'rocket',
+        name: 'ロケット',
+        leftEdges: [
+          // Nose Cone (Centered at col 5)
+          [[5,1],[4,2]],[[4,2],[3,3]],
+          [[5,1],[6,2]],[[6,2],[7,3]],
+          [[3,3],[4,3]],[[4,3],[5,3]],[[5,3],[6,3]],[[6,3],[7,3]],
+          // Body
+          [[3,3],[3,4]],[[3,4],[3,5]],[[3,5],[3,6]],[[3,6],[3,7]],[[3,7],[3,8]],
+          [[7,3],[7,4]],[[7,4],[7,5]],[[7,5],[7,6]],[[7,6],[7,7]],[[7,7],[7,8]],
+          [[3,8],[4,8]],[[4,8],[5,8]],[[5,8],[6,8]],[[6,8],[7,8]],
+          // Wings
+          [[3,6],[2,7]],[[2,7],[1,8]],[[1,8],[2,8]],[[2,8],[3,8]],
+          [[7,6],[8,7]],[[8,7],[9,8]],[[9,8],[8,8]],[[8,8],[7,8]],
+          // Flames
+          [[4,8],[3,9]],[[3,9],[4,10]],[[4,10],[5,11]],[[5,11],[6,10]],[[6,10],[7,9]],[[7,9],[6,8]],
+          [[5,8],[5,9]],[[5,9],[5,10]]
+        ]
+      },
+      {
+        id: 'shinkansen',
+        name: 'しんかんせん',
+        leftEdges: [
+          // 1. ノーズ・前頭部（スクショ通りの綺麗な流線型）
+          [[1, 8], [1, 9]],
+          [[1, 9], [4, 9]],
+          [[1, 8], [3, 7]],
+          [[3, 7], [4, 7]],
+          [[4, 7], [4, 9]],
+          [[4, 7], [7, 6]],
+          [[7, 6], [8, 5]],
+          [[8, 5], [10, 4]],
+          [[7, 6], [11, 6]],
+          [[11, 4], [11, 6]],
+
+          // 2. 屋根・車体後部
+          [[10, 4], [23, 4]],
+          [[23, 4], [23, 9]],
+
+          // 3. 車体中央の2重ライン（アクセント帯）
+          [[9, 7], [23, 7]],
+          [[9, 8], [23, 8]],
+
+          // 4. 乗務員室ドア
+          [[13, 5], [15, 5]],
+          [[13, 5], [13, 9]],
+          [[15, 5], [15, 9]],
+
+          // 5. 客室窓（正方形3個）
+          [[17, 5], [18, 5]], [[18, 5], [18, 6]], [[18, 6], [17, 6]], [[17, 6], [17, 5]],
+          [[19, 5], [20, 5]], [[20, 5], [20, 6]], [[20, 6], [19, 6]], [[19, 6], [19, 5]],
+          [[21, 5], [22, 5]], [[22, 5], [22, 6]], [[22, 6], [21, 6]], [[21, 6], [21, 5]],
+
+          // 6. 前後の台車（車輪カバー）と底面
+          [[4, 9], [5, 10]], [[5, 10], [6, 10]], [[6, 10], [7, 9]],
+          [[4, 9], [7, 9]],
+          [[7, 9], [17, 9]],
+          [[17, 9], [18, 10]], [[18, 10], [19, 10]], [[19, 10], [20, 9]],
+          [[17, 9], [20, 9]],
+          [[20, 9], [23, 9]],
+
+          // 7. パンタグラフ（2つ）
+          [[14, 2], [16, 2]], [[15, 2], [14, 3]], [[15, 2], [16, 3]], [[14, 3], [15, 4]], [[16, 3], [15, 4]],
+          [[20, 2], [22, 2]], [[21, 2], [20, 3]], [[21, 2], [22, 3]], [[20, 3], [21, 4]], [[22, 3], [21, 4]],
+
+          // 8. 線路（レールと斜め枕木）
+          [[0, 11], [24, 11]],
+          [[0, 12], [24, 12]],
+          [[2, 12], [3, 11]],
+          [[6, 12], [7, 11]],
+          [[10, 12], [11, 11]],
+          [[14, 12], [15, 11]],
+          [[18, 12], [19, 11]],
+          [[22, 12], [23, 11]]
+        ]
+      }
+    ];
+
+    // --- DOM Elements ---
+    const canvas = document.getElementById('dotCanvas');
+    const ctx = canvas.getContext('2d');
+    const confettiCanvas = document.getElementById('confettiCanvas');
+    const confettiCtx = confettiCanvas.getContext('2d');
+    const canvasContainer = document.getElementById('canvasContainer');
+
+    const modeFreeBtn = document.getElementById('modeFreeBtn');
+    const modeGuideBtn = document.getElementById('modeGuideBtn');
+    const presetBar = document.getElementById('presetBar');
+    const presetButtons = document.getElementById('presetButtons');
+    const colorPalette = document.getElementById('colorPalette');
+    const undoBtn = document.getElementById('undoBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const soundIcon = document.getElementById('soundIcon');
+    const screenshotBtn = document.getElementById('screenshotBtn');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+
+    const clearModal = document.getElementById('clearModal');
+    const cancelClearBtn = document.getElementById('cancelClearBtn');
+    const confirmClearBtn = document.getElementById('confirmClearBtn');
+
+    // --- State Variables ---
+    let lines = [];
+    let activePoint = null;
+    let currentColor = COLORS[0].hex; // 初期色：くろ (#1e293b)
+    let currentTool = 'pen'; // 'pen' | 'eraser'
+    let currentMode = 'free'; // 'free' | 'guide'
+    let currentPreset = PRESETS[0];
+    let soundEnabled = true;
+
+    // --- Drag & Drop Interactive State ---
+    let isPointerDown = false;
+    let dragStartPoint = null;
+    let currentPointerPos = null;
+
+    // --- Sound Synth ---
+    const sound = {
+      audioCtx: null,
+      init() {
+        if (!this.audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) this.audioCtx = new AudioContextClass();
+        }
+      },
+      playTone(freq, type = 'sine', duration = 0.1) {
+        if (!soundEnabled) return;
+        this.init();
+        if (!this.audioCtx) return;
+        try {
+          const osc = this.audioCtx.createOscillator();
+          const gain = this.audioCtx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.15, this.audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.audioCtx.destination);
+          osc.start();
+          osc.stop(this.audioCtx.currentTime + duration);
+        } catch (e) {}
+      },
+      playTap() { this.playTone(523.25, 'sine', 0.1); },
+      playLine() { this.playTone(659.25, 'triangle', 0.15); },
+      playUndo() { this.playTone(392.00, 'sine', 0.12); },
+      playFanfare() {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, i) => {
+          setTimeout(() => this.playTone(freq, 'triangle', 0.2), i * 100);
+        });
+      }
+    };
+
+    // --- Grid Calculation Helpers ---
+    // Guaranteed 1:1 Perfect Square Grid calculation
+    function getGridSpacing() {
+      const spacing = Math.min(canvas.width / (COLS - 1), canvas.height / (ROWS - 1));
+      const offsetX = (canvas.width - spacing * (COLS - 1)) / 2;
+      const offsetY = (canvas.height - spacing * (ROWS - 1)) / 2;
+      return { spacing, offsetX, offsetY };
+    }
+
+    function gridToPixel(col, row) {
+      const { spacing, offsetX, offsetY } = getGridSpacing();
+      return {
+        x: offsetX + col * spacing,
+        y: offsetY + row * spacing
+      };
+    }
+
+    function pixelToGrid(x, y) {
+      const { spacing, offsetX, offsetY } = getGridSpacing();
+      const col = Math.round((x - offsetX) / spacing);
+      const row = Math.round((y - offsetY) / spacing);
+
+      if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
+
+      const pt = gridToPixel(col, row);
+      const dist = Math.hypot(x - pt.x, y - pt.y);
+      const maxDist = spacing * 0.45;
+
+      return dist <= maxDist ? [col, row] : null;
+    }
+
+    // --- Edge Helper ---
+    function normalizeEdge(p1, p2) {
+      const k1 = `${p1[0]},${p1[1]}`;
+      const k2 = `${p2[0]},${p2[1]}`;
+      return k1 < k2 ? `${k1}-${k2}` : `${k2}-${k1}`;
+    }
+
+    // --- UI Toast ---
+    let toastTimeout = null;
+    function showToast(msg) {
+      toastMsg.textContent = msg;
+      toast.classList.remove('opacity-0', '-translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-2');
+      }, 2000);
+    }
+
+    // --- UI Setup ---
+    function initUI() {
+      // Color Palette & Eraser Button
+      colorPalette.innerHTML = '';
+      COLORS.forEach(color => {
+        const btn = document.createElement('button');
+        btn.className = `w-6 h-6 sm:w-7 sm:h-7 rounded-full transition border-2 ${color.hex === currentColor && currentTool === 'pen' ? 'scale-110 border-indigo-600 shadow-md ring-2 ring-indigo-200' : 'border-white shadow-sm'}`;
+        btn.style.backgroundColor = color.hex;
+        btn.title = color.name;
+        btn.addEventListener('click', () => {
+          sound.playTap();
+          currentColor = color.hex;
+          currentTool = 'pen'; // 色選択時はペンモードに自動切替（消しゴム解除）
+          initUI();
+        });
+        colorPalette.appendChild(btn);
+      });
+
+      // Eraser Button placed right after brown
+      const eraserBtn = document.createElement('button');
+      const isEraserActive = currentTool === 'eraser';
+      eraserBtn.className = `w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs transition border-2 ${
+        isEraserActive
+          ? 'scale-110 border-rose-500 bg-rose-500 text-white shadow-md ring-2 ring-rose-200'
+          : 'bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200 shadow-sm'
+      }`;
+      eraserBtn.innerHTML = '<i class="fa-solid fa-eraser"></i>';
+      eraserBtn.title = 'けす';
+      eraserBtn.addEventListener('click', () => {
+        sound.playTap();
+        if (currentTool === 'eraser') {
+          currentTool = 'pen'; // 再び押したらペンモード復帰（消しゴム解除）
+        } else {
+          currentTool = 'eraser'; // 消しゴムモードON
+          activePoint = null;
+        }
+        initUI();
+        render();
+      });
+      colorPalette.appendChild(eraserBtn);
+
+      // Preset Buttons
+      presetButtons.innerHTML = '';
+      PRESETS.forEach(preset => {
+        const btn = document.createElement('button');
+        const isActive = currentPreset.id === preset.id;
+        btn.className = `px-2 py-1 rounded-xl text-xs sm:text-sm font-bold transition shrink-0 ${
+          isActive ? 'bg-indigo-100 text-indigo-700 border border-indigo-300' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        }`;
+        btn.textContent = preset.name;
+        btn.addEventListener('click', () => {
+          sound.playTap();
+          currentPreset = preset;
+          lines = [];
+          activePoint = null;
+          initUI();
+          render();
+        });
+        presetButtons.appendChild(btn);
+      });
+
+      // Mode Switcher
+      if (currentMode === 'free') {
+        modeFreeBtn.className = 'px-2.5 py-1 rounded-lg font-bold text-xs sm:text-sm bg-indigo-600 text-white shadow-sm transition';
+        modeGuideBtn.className = 'px-2.5 py-1 rounded-lg font-bold text-xs sm:text-sm text-indigo-600 hover:bg-slate-200 transition';
+        presetBar.classList.add('hidden');
+      } else {
+        modeGuideBtn.className = 'px-2.5 py-1 rounded-lg font-bold text-xs sm:text-sm bg-indigo-600 text-white shadow-sm transition';
+        modeFreeBtn.className = 'px-2.5 py-1 rounded-lg font-bold text-xs sm:text-sm text-indigo-600 hover:bg-slate-200 transition';
+        presetBar.classList.remove('hidden');
+      }
+    }
+
+    modeFreeBtn.addEventListener('click', () => {
+      sound.playTap();
+      currentMode = 'free';
+      lines = [];
+      activePoint = null;
+      initUI();
+      render();
+    });
+
+    modeGuideBtn.addEventListener('click', () => {
+      sound.playTap();
+      currentMode = 'guide';
+      lines = [];
+      activePoint = null;
+      initUI();
+      render();
+    });
+
+    undoBtn.addEventListener('click', () => {
+      if (lines.length > 0) {
+        sound.playUndo();
+        lines.pop();
+        activePoint = null;
+        render();
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (lines.length === 0) return;
+      sound.playTap();
+      clearModal.classList.remove('hidden');
+    });
+
+    cancelClearBtn.addEventListener('click', () => {
+      sound.playTap();
+      clearModal.classList.add('hidden');
+    });
+
+    confirmClearBtn.addEventListener('click', () => {
+      sound.playUndo();
+      lines = [];
+      activePoint = null;
+      clearModal.classList.add('hidden');
+      showToast('きれいに けしたよ！');
+      render();
+    });
+
+    soundBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      soundIcon.className = soundEnabled ? 'fa-solid fa-volume-high text-sm text-slate-700' : 'fa-solid fa-volume-xmark text-sm text-rose-500';
+    });
+
+    // --- Screenshot / Camera Button Handler ---
+    screenshotBtn.addEventListener('click', () => {
+      sound.playTap();
+      try {
+        const link = document.createElement('a');
+        link.download = `dot-drawing-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('しゃしんを ほぞんしたよ！');
+      } catch (e) {
+        showToast('ほぞん できませんでした');
+      }
+    });
+
+    // --- Distance from point to line segment ---
+    function distanceToSegment(px, py, x1, y1, x2, y2) {
+      const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+      if (l2 === 0) return Math.hypot(px - x1, py - y1);
+      let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+    }
+
+    // --- Pointer & Touch Handling (Drag & Drop / Tap) ---
+    function getCanvasCoordinates(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function handlePointerDown(e) {
+      e.preventDefault();
+      const pos = getCanvasCoordinates(e);
+      isPointerDown = true;
+      currentPointerPos = pos;
+
+      const gridPt = pixelToGrid(pos.x, pos.y);
+
+      if (currentTool === 'eraser') {
+        // Eraser handles line deletion on initial touch/click
+        eraseLineAt(pos.x, pos.y);
+        return;
+      }
+
+      if (gridPt) {
+        dragStartPoint = gridPt;
+        activePoint = gridPt;
+      } else {
+        dragStartPoint = null;
+      }
+      render();
+    }
+
+    function handlePointerMove(e) {
+      if (!isPointerDown) return;
+      e.preventDefault();
+      currentPointerPos = getCanvasCoordinates(e);
+
+      if (currentTool === 'eraser') {
+        eraseLineAt(currentPointerPos.x, currentPointerPos.y);
+      } else {
+        render(); // Update rubber-band preview line
+      }
+    }
+
+    function handlePointerUp(e) {
+      if (!isPointerDown) return;
+      e.preventDefault();
+
+      if (currentTool === 'pen' && dragStartPoint && currentPointerPos) {
+        const endGridPt = pixelToGrid(currentPointerPos.x, currentPointerPos.y);
+
+        if (endGridPt && (endGridPt[0] !== dragStartPoint[0] || endGridPt[1] !== dragStartPoint[1])) {
+          // Dragged to a different point -> Draw line (Connect any distance!)
+          const edgeKey = normalizeEdge(dragStartPoint, endGridPt);
+          const exists = lines.some(l => normalizeEdge(l.from, l.to) === edgeKey);
+
+          if (!exists) {
+            lines.push({
+              from: dragStartPoint,
+              to: endGridPt,
+              color: currentColor
+            });
+            sound.playLine();
+          }
+          activePoint = endGridPt; // Set new active end point
+        } else if (dragStartPoint) {
+          // Just a single tap on a dot -> Move active start point without drawing
+          activePoint = dragStartPoint;
+          sound.playTap();
+        }
+      }
+
+      isPointerDown = false;
+      dragStartPoint = null;
+      currentPointerPos = null;
+      render();
+    }
+
+    function eraseLineAt(x, y) {
+      if (lines.length === 0) return;
+      const { spacing } = getGridSpacing();
+      const maxDist = spacing * 0.45;
+
+      let closestIdx = -1;
+      let minDist = Infinity;
+
+      lines.forEach((line, idx) => {
+        const pt1 = gridToPixel(line.from[0], line.from[1]);
+        const pt2 = gridToPixel(line.to[0], line.to[1]);
+        const dist = distanceToSegment(x, y, pt1.x, pt1.y, pt2.x, pt2.y);
+        if (dist < minDist && dist <= maxDist) {
+          minDist = dist;
+          closestIdx = idx;
+        }
+      });
+
+      if (closestIdx !== -1) {
+        lines.splice(closestIdx, 1);
+        sound.playUndo();
+        showToast('せんを 1ほん けしたよ！');
+        render();
+      }
+    }
+
+    // --- Canvas Rendering ---
+    function render() {
+      const w = canvas.width;
+      const h = canvas.height;
+      if (w === 0 || h === 0) return;
+
+      const { spacing } = getGridSpacing();
+      const dotRadius = spacing * 0.1;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      // 1. In Guide Mode: Sample Lines
+      if (currentMode === 'guide' && currentPreset && currentPreset.leftEdges) {
+        ctx.save();
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+
+        currentPreset.leftEdges.forEach(([p1, p2]) => {
+          const pt1 = gridToPixel(p1[0], p1[1]);
+          const pt2 = gridToPixel(p2[0], p2[1]);
+          ctx.beginPath();
+          ctx.moveTo(pt1.x, pt1.y);
+          ctx.lineTo(pt2.x, pt2.y);
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
+
+      // 2. Draw User Finished Lines
+      ctx.save();
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      lines.forEach(line => {
+        const pt1 = gridToPixel(line.from[0], line.from[1]);
+        const pt2 = gridToPixel(line.to[0], line.to[1]);
+        ctx.strokeStyle = line.color;
+        ctx.beginPath();
+        ctx.moveTo(pt1.x, pt1.y);
+        ctx.lineTo(pt2.x, pt2.y);
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      // 3. Draw Rubber-Band Drag Preview Line (Dragging in Pen Mode)
+      if (isPointerDown && currentTool === 'pen' && dragStartPoint && currentPointerPos) {
+        const startPx = gridToPixel(dragStartPoint[0], dragStartPoint[1]);
+        const hoveredGrid = pixelToGrid(currentPointerPos.x, currentPointerPos.y);
+        
+        // Snap to target dot if close, or follow pointer exactly
+        const targetPx = hoveredGrid ? gridToPixel(hoveredGrid[0], hoveredGrid[1]) : currentPointerPos;
+
+        ctx.save();
+        ctx.strokeStyle = currentColor;
+        ctx.globalAlpha = 0.65;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 4]); // Rubber band dashed line effect
+        ctx.beginPath();
+        ctx.moveTo(startPx.x, startPx.y);
+        ctx.lineTo(targetPx.x, targetPx.y);
+        ctx.stroke();
+        ctx.restore();
+
+        // Highlight targeted snap dot
+        if (hoveredGrid) {
+          const snapPx = gridToPixel(hoveredGrid[0], hoveredGrid[1]);
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(snapPx.x, snapPx.y, dotRadius * 1.8, 0, Math.PI * 2);
+          ctx.fillStyle = currentColor;
+          ctx.globalAlpha = 0.4;
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // 4. Draw All Grid Dots
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+          const pt = gridToPixel(c, r);
+          const isActive = activePoint && activePoint[0] === c && activePoint[1] === r;
+
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, isActive ? dotRadius * 1.6 : dotRadius, 0, Math.PI * 2);
+
+          if (isActive) {
+            ctx.fillStyle = '#4f46e5';
+          } else {
+            ctx.fillStyle = '#cbd5e1';
+          }
+          ctx.fill();
+        }
+      }
+    }
+
+    // --- Confetti Effect ---
+    let particles = [];
+    function triggerConfetti() {
+      particles = [];
+      const colors = ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+      for (let i = 0; i < 70; i++) {
+        particles.push({
+          x: confettiCanvas.width / 2,
+          y: confettiCanvas.height / 2,
+          vx: (Math.random() - 0.5) * 14,
+          vy: (Math.random() - 0.7) * 14,
+          size: Math.random() * 8 + 5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          vRot: (Math.random() - 0.5) * 10,
+          opacity: 1
+        });
+      }
+      animateConfetti();
+    }
+
+    function animateConfetti() {
+      confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      particles.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.35;
+        p.rotation += p.vRot;
+        p.opacity -= 0.015;
+
+        if (p.opacity > 0) {
+          confettiCtx.save();
+          confettiCtx.translate(p.x, p.y);
+          confettiCtx.rotate((p.rotation * Math.PI) / 180);
+          confettiCtx.globalAlpha = Math.max(0, p.opacity);
+          confettiCtx.fillStyle = p.color;
+          confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+          confettiCtx.restore();
+        }
+      });
+
+      particles = particles.filter(p => p.opacity > 0);
+      if (particles.length > 0) {
+        requestAnimationFrame(animateConfetti);
+      }
+    }
+
+    // --- Resizing ---
+    function resizeCanvas() {
+      const rect = canvasContainer.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      confettiCanvas.width = rect.width;
+      confettiCanvas.height = rect.height;
+      render();
+    }
+
+    // --- Event Setup ---
+    canvasContainer.addEventListener('mousedown', handlePointerDown);
+    canvasContainer.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+
+    canvasContainer.addEventListener('touchstart', handlePointerDown, { passive: false });
+    canvasContainer.addEventListener('touchmove', handlePointerMove, { passive: false });
+    window.addEventListener('touchend', handlePointerUp, { passive: false });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    window.onload = () => {
+      initUI();
+      resizeCanvas();
+    };
+  </script>
+</body>
+</html>
